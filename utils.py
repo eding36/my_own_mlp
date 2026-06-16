@@ -111,7 +111,7 @@ class MLP():
             preactivation_layer_gradient = activation_gradient * act_grad  # (B, dim_out)
 
             layer_input = self.activations[i-1] if i > 0 else self.input  # (B, dim_in)
-            weight_layer_gradient = layer_input.T @ preactivation_layer_gradient  # (dim_in, dim_out)
+            weight_layer_gradient = layer_input.T @ preactivation_layer_gradient  # (dim_in, dim_out) #activation layer is used as layer_input unless input layer is reached
             bias_layer_gradient = preactivation_layer_gradient.sum(axis=0)  # (dim_out,)
 
             activation_gradient = preactivation_layer_gradient @ self.weights[i].T  # (B, dim_in)
