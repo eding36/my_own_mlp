@@ -1,6 +1,7 @@
 
 import numpy as np
-from utils import DataLoader, MLP
+from utils import DataLoader
+from modules import MLP
 
 NUM_RESIDUES = 21
 MAX_LEN = 64
