@@ -26,14 +26,15 @@ class DataLoader():
     def __init__(self, split_ratio, batch_size, csv_dir):
         self.split_ratio = split_ratio
         self.batch_size = batch_size
-        self.csv_dir = csv_dir
-    
-    def make_train_test_split(self):
-        csv = pd.read_csv(self.csv_dir)
+        csv = pd.read_csv(csv_dir)
         prot_seqs = csv['seq'].tolist()
-        encoded_seqs = np.array([one_hot_encode(seq) for seq in prot_seqs])
-        solubility_labels = np.array(csv['is_soluble'])
-        idx = np.random.permutation(len(encoded_seqs))
+        self.encoded_seqs = np.array([one_hot_encode(seq) for seq in prot_seqs])
+        self.labels = np.array(csv['is_soluble'])
+
+    def make_train_test_split(self, seed):
+        encoded_seqs = self.encoded_seqs
+        solubility_labels = self.labels
+        idx = np.random.default_rng(seed=seed).permutation(len(encoded_seqs))
         split = int(self.split_ratio*len(encoded_seqs))
         train_idx, test_idx = idx[:split], idx[split:]
         X_train, X_test = encoded_seqs[train_idx], encoded_seqs[test_idx] #(N,64)
@@ -49,7 +50,8 @@ class Linear():
         self.dim_out = dim_out
 
     def forward(self):
-        return np.random.randn(self.dim_in, self.dim_out), np.zeros(self.dim_out)
+        scale = np.sqrt(2.0/self.dim_in)
+        return np.random.randn(self.dim_in, self.dim_out) * scale, np.zeros(self.dim_out)
     
 class LinearStack():
 
@@ -67,7 +69,7 @@ class LinearStack():
 class MLP():
     def __init__(self, input_dim, learning_rate, max_len):
         self.input_dim = input_dim
-        self.stack, self.num_layers = LinearStack(input_dim = input_dim).forward()
+        self.stack, self.num_layers = LinearStack(input_dim = max_len * input_dim).forward()
         self.weights = []
         self.biases = []
         self.activations = [None]*self.num_layers
@@ -82,42 +84,37 @@ class MLP():
         
 
     def forward(self, x_batch):
-        x = x_batch
+        self.input = x_batch.reshape(x_batch.shape[0], -1)  # (B, max_len*num_residues)
+        x = self.input
         i=0
-        for layer_weights, layer_biases in zip(self.weights, self.biases):            
+        for layer_weights, layer_biases in zip(self.weights, self.biases):
             x = x @ layer_weights + layer_biases
-            x = 1/(1+np.exp(-x)) ##sigmoid activation fxn
+            is_last = (i == self.num_layers - 1)
+            x = 1/(1+np.exp(-x)) if is_last else np.maximum(0, x)
             self.activations[i] = x
             i+=1
 
-        y_pred_batch = x.mean(axis=1) #(B,1)
-       
-        return y_pred_batch
+        return x  # (B, 1)
          
     
     def backward(self, d_loss):
-        meanpool_activation_gradient = d_loss #(24,1)   
-        
-        last_activation_layer_gradient = np.repeat(meanpool_activation_gradient[:, None, :]/self.max_len, self.max_len, axis=1) #(24,64,1)
-        activation_gradient = last_activation_layer_gradient #(24,64,1)
-        
-        for i in range(self.num_layers-1, 0, -1):
-            #dims are for the first layer in the iteration
-            activation_layer = self.activations[i] #(24,64,1)
-            
-            preactivation_layer_gradient = activation_gradient*((activation_layer)*(1-activation_layer)) #(24,64,1)
-            weight_layer_gradient = np.einsum('bti,bto->io', self.activations[i-1], preactivation_layer_gradient) #(2,1)
-            bias_layer_gradient = preactivation_layer_gradient.sum(axis=(0,1)) #(1)
+        activation_gradient = d_loss  # (B, 1)
 
-            activation_gradient = preactivation_layer_gradient @ self.weights[i].T #(24,64,2)
+        for i in range(self.num_layers-1, -1, -1):
+            activation_layer = self.activations[i]  # (B, dim_out)
 
-            self.weights[i] = self.weights[i] - weight_layer_gradient*self.learning_rate
-            self.biases[i] = self.biases[i] - bias_layer_gradient*self.learning_rate
-            
+            is_last = (i == self.num_layers - 1)
+            if is_last:
+                act_grad = activation_layer * (1 - activation_layer) #derivative of sigmoid activation ONLY at last layer 
+            else:
+                act_grad = (activation_layer > 0).astype(activation_layer.dtype) #derivative of ReLU activation
+            preactivation_layer_gradient = activation_gradient * act_grad  # (B, dim_out)
 
-       
-            
+            layer_input = self.activations[i-1] if i > 0 else self.input  # (B, dim_in)
+            weight_layer_gradient = layer_input.T @ preactivation_layer_gradient  # (dim_in, dim_out)
+            bias_layer_gradient = preactivation_layer_gradient.sum(axis=0)  # (dim_out,)
 
-        
-        
-           
+            activation_gradient = preactivation_layer_gradient @ self.weights[i].T  # (B, dim_in)
+
+            self.weights[i] = self.weights[i] - weight_layer_gradient * self.learning_rate
+            self.biases[i] = self.biases[i] - bias_layer_gradient * self.learning_rate
