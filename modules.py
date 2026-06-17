@@ -36,11 +36,34 @@ class AttentionLayer():
         query = x_batch @ self.query_matrix   #(B,max_res,attention_dim)
         key = x_batch @ self.key_matrix
         value = x_batch @ self.value_matrix #(B,max_res,attention_dim)
-        attention_score_matrix = softmax((query @ key.transpose(2,0,1))/np.sqrt(self.attention_dim)) #(B,max_res,max_res)
-        attention_matrix = attention_score_matrix @ value #(B,max_res,attention_dim)
+        attention_score = query @ key.transpose(2,0,1))/np.sqrt(self.attention_dim) #(B,max_res,max_res)
+        attention = softmax(attention_score)
+        output = attention @ value #(B,max_res,attention_dim)
 
-        return attention_matrix
+        self.output = output
+        self.attention_score = attention_score
+        self.attention = attention
 
+        return output
+
+    def backward(self, activation_gradient, x_batch):
+        output_gradient = activation_gradient #(B,max_res,attention_dim)
+        value_gradient = self.attention.transpose(0,2,1) @ output_gradient #(B, max_res, attention_dim) 
+        attention_gradient = output_gradient @ self.value.transpose(0,2,1) #(post softmax) #(B,max_res, max_res)
+        attention_score_gradient = self.attention * (attention_gradient-(attention_gradient*self.attention)).sum(axis=-1, keepdims=True) #(pre softmax) #(B, max_res, max_res)
+        attention_score_gradient = attention_score_gradient/np.sqrt(self.attention_dim) 
+        query_gradient = attention_score_gradient @ self.key_matrix #(B,max_res, attention_dim)
+        key_gradient = self.attention_score @ self.query_matrix #(B, max_res, attention_dim)
+        query_matrix_gradient = np.einsum('bti,bto->io', x_batch, query_gradient)  #(input_dim, attention_dim)
+        key_matrix_gradient = np.einsum('bti,bto->io', x_batch, key_gradient)  #(input_dim, attention_dim)
+        value_matrix_gradient = np.einsum('bti,bto->io', x_batch, value_gradient)  #(input_dim, attention_dim)
+        x_batch_gradient = query_matrix_gradient @ x_batch.T + key_matrix_gradient @ x_batch.T
+
+        self.query_matrix = self.query_matrix - query_matrix_gradient #update Q_w, K_w, V_w weights
+        self.key_matrix = self.key_matrix - key_matrix_gradient
+        self.value_matrix = self.value_matrix - value_matrix_gradient
+
+        return x_batch_gradient
     
 
 class MLP():
@@ -72,20 +95,19 @@ class MLP():
             i+=1
 
         return x  # (B, 1)
-         
     
-    def backward(self, d_loss):
-        activation_gradient = d_loss  # (B, 1)
+    
+    def backward(self, activation_gradient):
 
         for i in range(self.num_layers-1, -1, -1):
             activation_layer = self.activations[i]  # (B, dim_out)
 
             is_last = (i == self.num_layers - 1)
             if is_last:
-                act_grad = activation_layer * (1 - activation_layer) #derivative of sigmoid activation ONLY at last layer 
+                d_act = activation_layer * (1 - activation_layer) #derivative of sigmoid activation ONLY at last layer 
             else:
-                act_grad = (activation_layer > 0).astype(activation_layer.dtype) #derivative of ReLU activation
-            preactivation_layer_gradient = activation_gradient * act_grad  # (B, dim_out)
+                d_act = (activation_layer > 0).astype(activation_layer.dtype) #derivative of ReLU activation
+            preactivation_layer_gradient = activation_gradient * d_act  # (B, dim_out)
 
             layer_input = self.activations[i-1] if i > 0 else self.input  # (B, dim_in)
             weight_layer_gradient = layer_input.T @ preactivation_layer_gradient  # (dim_in, dim_out) #activation layer is used as layer_input unless input layer is reached
@@ -95,3 +117,5 @@ class MLP():
 
             self.weights[i] = self.weights[i] - weight_layer_gradient * self.learning_rate
             self.biases[i] = self.biases[i] - bias_layer_gradient * self.learning_rate
+
+        return activation_gradient

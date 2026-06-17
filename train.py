@@ -20,7 +20,7 @@ def train(csv_dir, num_epochs = NUM_EPOCHS):
             d_loss = (p - y_batch) / (p * (1 - p)) / y_batch.shape[0]
 
             print('batch train loss:', avg_train_loss)
-            model.backward(d_loss)
+            model.backward(activation_gradient=d_loss)
 
         y_pred_val = model.forward(X_val)
         y_val = y_val[:,np.newaxis]
