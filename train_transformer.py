@@ -6,7 +6,7 @@ from modules import Transformer
 NUM_RESIDUES = 21
 MAX_LEN = 64
 D_MODEL = 32
-NUM_EPOCHS = 50
+NUM_EPOCHS = 100
 LEARNING_RATE = 0.0001
 model = Transformer(max_len = MAX_LEN, input_dim = NUM_RESIDUES, d_model = D_MODEL)
 def train(csv_dir, num_epochs = NUM_EPOCHS):
