@@ -1,10 +1,12 @@
-# classifying protein solubility 
+# ml models from scratch
+this is a side project where i buit an mlp classification model and a transformer from scratch, using only numpy and pandas. forward passes, backpropagation, weight and bias updates are all implemented manually.
 
-this is a mlp classification model built from scratch using only numpy and pandas, with the goal of predicting protein solubility from amino acid sequences.
+# mlp to classify protein solubility off of sequence
+an mlp classification model built with the goal of predicting protein solubility from amino acid sequences.
 
 ## overview
 
-given a CSV of protein sequences and binary solubility labels, a feedforward neural network classifies whether a protein is soluble. forward passes, backpropagation, weight and bias updates are all implemented manually.
+given a CSV of protein sequences and binary solubility labels, a feedforward neural network classifies whether a protein is soluble. 
 
 ## files
 
@@ -15,19 +17,18 @@ given a CSV of protein sequences and binary solubility labels, a feedforward neu
 
 sequences are one-hot encoded to a fixed length of MAX_RES residues × 21 possible amino acids (20 standard + a padding token),
 
-the network consists of a stack of linear activation layers, with ReLU activation functions between each hidden layer
-
-- hidden layers use **ReLU** activation
-- output layer uses **Sigmoid** for binary classification
-- weights initialized with He initialization (`sqrt(2 / dim_in)`)
-- biases for each layer initialized with np.zeros(dim_out)
+the network consists of:
+  - a stack of linear activation layers, with ReLU activation functions between each hidden layer. 
+  - an output layer that uses a sigmoid activation function for binary classification.
+  - weights initialized with He initialization (`sqrt(2 / dim_in)`)
+  - biases for each layer initialized with np.zeros(dim_out)
 
 
 ## training
 
 - **loss:** binary cross-entropy (BCE)
 - **optimizer:** mini-batch gradient descent
-- **learning rate:** 0.01 (tunable)
+- **learning rate:** 0.001 (tunable)
 - **batch size:** 24 (tunable)
 - **epochs:** 100 (tunable)
 - **train/val split:** 80/20, reshuffled each epoch with the epoch number as the random seed (% tunable)
@@ -57,7 +58,9 @@ to use a different CSV:
 train(csv_dir="your_data.csv")
 ```
 
-## dependencies
+# transformer to predict the next amino acid in a partially masked amino acid sequence - coming soon!
+
+# dependencies
 
 - `numpy`
 - `pandas`
