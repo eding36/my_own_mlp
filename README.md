@@ -1,7 +1,7 @@
 # ml models from scratch
 this is a side project where i buit an mlp classification model and a transformer from scratch, using only numpy and pandas. forward passes, backpropagation, weight and bias updates are all implemented manually.
 
-# mlp to classify protein solubility off of sequence
+# mlp to classify protein solubility given it's sequence
 an mlp classification model built with the goal of predicting protein solubility from amino acid sequences.
 
 ## overview
@@ -58,7 +58,7 @@ to use a different CSV:
 train(csv_dir="your_data.csv")
 ```
 
-# transformer to predict the next amino acid in a partially masked amino acid sequence - coming soon!
+# transformer to predict the next amino acid in a protein sequence - coming soon!
 
 # dependencies
 
