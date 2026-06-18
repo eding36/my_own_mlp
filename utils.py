@@ -11,7 +11,7 @@ def one_hot_encode(sequence: str, max_len = 64) -> np.ndarray:
     
     seq = sequence.upper()
     if len(seq) < max_len:
-        seq += "0"*(max_len-len(seq))
+        seq += "0" * (max_len-len(seq))
     if len(seq) > max_len:
         seq = seq[:max_len]
     out = np.zeros((max_len, len(RESIDUES)), dtype=np.float32)
@@ -22,7 +22,9 @@ def one_hot_encode(sequence: str, max_len = 64) -> np.ndarray:
     return out
 
 def softmax(x):
-    return np.exp(x)/sum(np.exp(x))
+    x_stable = x - x.max(axis=-1, keepdims=True)
+    e = np.exp(x_stable)
+    return e / e.sum(axis=-1, keepdims=True)
 
 class DataLoader():
     def __init__(self, split_ratio, batch_size, csv_dir):
@@ -37,7 +39,7 @@ class DataLoader():
         encoded_seqs = self.encoded_seqs
         solubility_labels = self.labels
         idx = np.random.default_rng(seed=seed).permutation(len(encoded_seqs))
-        split = int(self.split_ratio*len(encoded_seqs))
+        split = int(self.split_ratio * len(encoded_seqs))
         train_idx, test_idx = idx[:split], idx[split:]
         X_train, X_test = encoded_seqs[train_idx], encoded_seqs[test_idx] #(N,64)
         Y_train, Y_test = solubility_labels[train_idx], solubility_labels[test_idx]
@@ -46,3 +48,19 @@ class DataLoader():
         
         return X_train, X_test, Y_train, Y_test
     
+def positional_encoding(max_len,d_model):
+    pos_enc = np.zeros((max_len, d_model))
+    pos = np.arange(max_len)[:, None]  # [max_len, 1]
+    i = np.arange(0, d_model, 2)  # [d_model/2]  — even indices
+    div_term = 10000 ** (i / d_model)  # [d_model/2]
+    
+    pos_enc[:, 0::2] = np.sin(pos / div_term) # even columns: 0,2,4,...
+    pos_enc[:, 1::2] = np.cos(pos / div_term) # odd columns:  1,3,5,...
+    
+    return pos_enc
+
+def sigmoid(x):
+    return 1/(1+np.exp(-x))
+
+def relu(x):
+    return np.maximum(0,x)
