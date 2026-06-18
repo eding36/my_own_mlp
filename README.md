@@ -1,5 +1,5 @@
 # ml models from scratch
-this is a side project where i buit an mlp classification model and a transformer from scratch, using only numpy and pandas. forward passes, backpropagation, weight and bias updates are all implemented manually.
+this is a side project where i buit an mlp classification model and a transformer from scratch, using only numpy and pandas. forward passes, backpropagation, dataloaders, weight and bias updates are all implemented manually.
 
 # mlp to classify protein solubility given it's sequence
 an mlp classification model built with the goal of predicting protein solubility from amino acid sequences.
