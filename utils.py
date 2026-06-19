@@ -1,6 +1,46 @@
 import numpy as np
 import pandas as pd
 
+def kmeans_clustering(data: np.array, k: int, cluster_quality_threshold: float):
+
+    centroid_idxs = np.random.choice(data.shape[0], k, replace=False) 
+    centroids = data[centroid_idxs]
+    keys = [x for x in range(len(centroids))]
+    cluster_dict = {key: [] for key in keys}
+    cluster_idx_dict = {key: [] for key in keys}
+    
+    while True:
+        
+        cluster_dict = {key: [] for key in keys}
+        cluster_idx_dict = {key: [] for key in keys}
+        total_centroid_diffs = 0
+        for i, datapoint in enumerate(data):
+            dist=np.inf
+            for j in range(len(centroids)):
+                dist_new = np.linalg.norm(datapoint-centroids[j])
+                
+                if dist_new < dist:
+                    dist = dist_new
+                    cluster_choice = j
+            
+            cluster_dict[cluster_choice].append(datapoint)
+            cluster_idx_dict[cluster_choice].append(i)
+            
+        for i in range(len(centroids)):
+            centroid_new = np.mean(cluster_dict[i], axis=0)
+            centroid_old = centroids[i]
+            centroid_diff = abs(centroid_new - centroid_old).sum()
+            total_centroid_diffs += centroid_diff
+            centroids[i] = centroid_new
+        
+        
+        if total_centroid_diffs <= cluster_quality_threshold:
+            print(cluster_idx_dict)
+            break
+
+    return cluster_idx_dict        
+            
+
 def split_into_batches(X, batch_size):
     return [X[i:i+batch_size] for i in range(0, len(X), batch_size)]
 
